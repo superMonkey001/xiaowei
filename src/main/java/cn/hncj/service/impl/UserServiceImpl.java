@@ -1,8 +1,11 @@
 package cn.hncj.service.impl;
 
+import cn.hncj.enums.MsgActionEnum;
 import cn.hncj.enums.MsgSignFlagEnum;
 import cn.hncj.enums.SearchFriendsStatusEnum;
 import cn.hncj.mapper.*;
+import cn.hncj.netty.DataContent;
+import cn.hncj.netty.UserChannelRel;
 import cn.hncj.pojo.ChatMsg;
 import cn.hncj.pojo.FriendsRequest;
 import cn.hncj.pojo.MyFriends;
@@ -12,6 +15,7 @@ import cn.hncj.pojo.vo.MyFriendsVO;
 import cn.hncj.service.UserService;
 import cn.hncj.utils.FastDFSClient;
 import cn.hncj.utils.FileUtils;
+import cn.hncj.utils.JsonUtils;
 import cn.hncj.utils.QRCodeUtils;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -78,8 +82,8 @@ public class UserServiceImpl implements UserService {
     public Users queryUserForLogin(String username, String pwd) {
         Example userExample = new Example(Users.class);
         Example.Criteria criteria = userExample.createCriteria();
-        criteria.andEqualTo("username",username);
-        criteria.andEqualTo("password",pwd);
+        criteria.andEqualTo("username", username);
+        criteria.andEqualTo("password", pwd);
         Users user = userMapper.selectOneByExample(userExample);
         return user;
     }
@@ -91,7 +95,7 @@ public class UserServiceImpl implements UserService {
 
         // xiaowei_qrcode:[username]
         String qrCodePath = userId + "qrcode.png";
-        qrCodeUtils.createQRCode(qrCodePath,"xiaowei_qrcode:" + user.getUsername());
+        qrCodeUtils.createQRCode(qrCodePath, "xiaowei_qrcode:" + user.getUsername());
         MultipartFile qrCodeFile = FileUtils.fileToMultipart(qrCodePath);
         String qrCodeUrl = "";
         try {
@@ -112,6 +116,7 @@ public class UserServiceImpl implements UserService {
         Users dbUser = queryUserById(user.getId());
         return dbUser;
     }
+
     @Transactional(propagation = Propagation.SUPPORTS)
     public Users queryUserById(String userId) {
         return userMapper.selectByPrimaryKey(userId);
@@ -142,7 +147,7 @@ public class UserServiceImpl implements UserService {
     public Users queryUserInfoByUsername(String username) {
         Example example = new Example(Users.class);
         Example.Criteria criteria = example.createCriteria();
-        criteria.andEqualTo("username",username);
+        criteria.andEqualTo("username", username);
         return userMapper.selectOneByExample(example);
     }
 
@@ -152,8 +157,8 @@ public class UserServiceImpl implements UserService {
         Users friend = queryUserInfoByUsername(friendUsername);
         Example example = new Example(FriendsRequest.class);
         Example.Criteria criteria = example.createCriteria();
-        criteria.andEqualTo("sendUserId",myUserId);
-        criteria.andEqualTo("acceptUserId",friend.getId());
+        criteria.andEqualTo("sendUserId", myUserId);
+        criteria.andEqualTo("acceptUserId", friend.getId());
         FriendsRequest friendsRequest = friendsRequestMapper.selectOneByExample(example);
         if (friendsRequest == null) {
             String requestId = sid.nextShort();
@@ -182,12 +187,20 @@ public class UserServiceImpl implements UserService {
         frc.andEqualTo("acceptUserId", acceptUserId);
         friendsRequestMapper.deleteByExample(fre);
     }
+
     @Transactional(propagation = Propagation.REQUIRED)
     @Override
     public void passFriendRequest(String sendUserId, String acceptUserId) {
         saveFriends(sendUserId, acceptUserId);
         saveFriends(acceptUserId, sendUserId);
         deleteFriendRequest(sendUserId, acceptUserId);
+        // 使用websocket推送消息给请求发起者
+        Channel channel = UserChannelRel.get(sendUserId);
+        if (channel != null) {
+            DataContent dataContent = new DataContent();
+            dataContent.setAction(MsgActionEnum.PULL_FRIEND.type);
+            channel.writeAndFlush(new TextWebSocketFrame(JsonUtils.objectToJson(dataContent)));
+        }
     }
 
 
@@ -230,6 +243,19 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateMsgSigned(List<String> msgIdList) {
         usersMapperCustom.batchUpdateMsgSigned(msgIdList);
+    }
+
+
+
+    @Transactional(propagation = Propagation.SUPPORTS)
+    @Override
+    public List<cn.hncj.pojo.ChatMsg> getUnReadMsgList(String acceptUserId) {
+        Example example = new Example(ChatMsg.class);
+        Example.Criteria criteria = example.createCriteria();
+        criteria.andEqualTo("signFlag", 0);
+        criteria.andEqualTo("acceptUserId",acceptUserId);
+        List<ChatMsg> chatMsgs = chatMsgMapper.selectByExample(example);
+        return chatMsgs;
     }
 
 }

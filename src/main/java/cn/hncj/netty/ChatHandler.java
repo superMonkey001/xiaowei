@@ -63,6 +63,8 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
             chatMsg.setMsgId(msgId);
 
 
+            DataContent dataContentMsg = new DataContent();
+            dataContentMsg.setChatMsg(chatMsg);
             // 发送消息
             // 从全局中获取接收方的channel
             Channel channel = UserChannelRel.get(receiverId);
@@ -73,7 +75,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
                 Channel findChannel = users.find(channel.id());
                 if (findChannel != null) {
                     channel.writeAndFlush(new TextWebSocketFrame(
-                            JsonUtils.objectToJson(chatMsg)
+                            JsonUtils.objectToJson(dataContentMsg)
                     ));
                 } else {
                     // 推送消息
@@ -99,6 +101,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 
         } else if (action.equals(KEEPALIVE.type)) {
             // 2.4 心跳类型
+            System.out.println("收到来自channel为[" + currentChannel + "]的心跳包...");
         }
 
         // 3.
@@ -112,6 +115,8 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+        String s = ctx.channel().id().asShortText();
+
         // 这个方法执行会自动删除对应的channel
         users.remove(ctx.channel());
 

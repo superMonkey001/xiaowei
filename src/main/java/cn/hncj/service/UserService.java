@@ -80,5 +80,6 @@ public interface UserService {
 	 */
 	public void updateMsgSigned(List<String> msgIdList);
 
+	public List<cn.hncj.pojo.ChatMsg> getUnReadMsgList(String acceptUserId);
 
 }

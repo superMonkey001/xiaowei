@@ -2,6 +2,7 @@ package cn.hncj.controller;
 
 import cn.hncj.enums.OperatorFriendRequestTypeEnum;
 import cn.hncj.enums.SearchFriendsStatusEnum;
+import cn.hncj.pojo.ChatMsg;
 import cn.hncj.pojo.Users;
 import cn.hncj.pojo.bo.UsersBo;
 import cn.hncj.pojo.vo.MyFriendsVO;
@@ -209,5 +210,19 @@ public class UserController {
 
         return IMoocJSONResult.ok(myFirends);
     }
+    /**
+     * @Description: 查询我的好友列表
+     */
+    @PostMapping("/getUnReadMsgList")
+    public IMoocJSONResult getUnReadMsgList(String acceptUserId) {
+        // 0. userId 判断不能为空
+        if (StringUtils.isBlank(acceptUserId)) {
+            return IMoocJSONResult.errorMsg("");
+        }
+        // 1. 数据库查询好友列表
+        List<ChatMsg> unReadMsgList = userService.getUnReadMsgList(acceptUserId);
+        return IMoocJSONResult.ok(unReadMsgList);
+    }
+
 
 }
