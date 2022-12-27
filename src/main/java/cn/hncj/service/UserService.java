@@ -2,6 +2,7 @@ package cn.hncj.service;
 
 import java.util.List;
 
+import cn.hncj.netty.ChatMsg;
 import cn.hncj.pojo.Users;
 import cn.hncj.pojo.vo.FriendRequestVO;
 import cn.hncj.pojo.vo.MyFriendsVO;
@@ -65,12 +66,19 @@ public interface UserService {
 	 * @Description: 查询好友列表
 	 */
 	public List<MyFriendsVO> queryMyFriends(String userId);
-	
+
+
+
+	/**
+	 * @Description: 保存聊天消息到数据库
+	 */
+	public String saveMsg(ChatMsg chatMsg);
+
 
 	/**
 	 * @Description: 批量签收消息
 	 */
 	public void updateMsgSigned(List<String> msgIdList);
-	
+
 
 }
